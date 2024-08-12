@@ -1,0 +1,372 @@
+package com.example.tictactoe
+
+import android.os.Bundle
+import android.util.Log
+import android.view.View
+import android.widget.AdapterView
+import android.widget.Button
+import android.widget.GridLayout
+import android.widget.Spinner
+import android.widget.TextView
+import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var sizeSpinner: Spinner
+    private lateinit var gridLayout: GridLayout
+    private lateinit var gameState: GameState
+    private lateinit var rematchButton: Button
+    private lateinit var gameResult: TextView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContentView(R.layout.activity_main)
+
+        sizeSpinner = findViewById(R.id.size_spinner)
+        gridLayout = findViewById(R.id.grid_layout)
+        rematchButton = findViewById(R.id.rematch_button)
+        gameResult = findViewById(R.id.game_result)
+
+        setupTableSizeSpinner()
+        setupBoard()
+
+        rematchButton.setOnClickListener {
+            handleRematch()
+        }
+    }
+
+    private fun setupTableSizeSpinner() {
+        sizeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val size = when (position) {
+                    0 -> 3
+                    1 -> 4
+                    2 -> 5
+                    3 -> 6
+                    else -> 3
+                }
+                Log.d("MainActivity", "Table size: $size")
+                updateBoardSize(size)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                // Handle case where no item is selected if needed
+            }
+        }
+    }
+
+    private fun updateBoardSize(size: Int) {
+        gameState = GameState(
+            board = Array(size) { Array(size) { Player.NONE } },
+            currentPlayer = Player.X
+        )
+
+        gridLayout.removeAllViews()
+        gridLayout.rowCount = size
+        gridLayout.columnCount = size
+
+        for (i in 0 until size) {
+            for (j in 0 until size) {
+                val button = Button(this).apply {
+                    layoutParams = GridLayout.LayoutParams().apply {
+                        width = 0
+                        height = 0
+                        columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                        rowSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    }
+                    setPadding(16, 16, 16, 16)
+                    setBackgroundResource(R.drawable.button_background)
+                    setOnClickListener { handleMove(i, j) }
+                }
+                gridLayout.addView(button)
+            }
+        }
+        Log.d("MainActivity", "Board updated with size $size")
+    }
+
+    private fun setupBoard() {
+        updateBoardSize(3)
+        Log.d("MainActivity", "Board setup with size 3x3")
+    }
+
+    private fun handleMove(row: Int, col: Int) {
+        if (gameState.board[row][col] == Player.NONE && gameState.winner == null) {
+            val buttonIndex = row * gameState.board.size + col
+            val button = gridLayout.getChildAt(buttonIndex) as Button
+
+            val buttonWidth = button.width
+            val buttonHeight = button.height
+
+            val iconSize = (buttonWidth.coerceAtMost(buttonHeight) * 0.8).toInt()
+            val iconLeft = (buttonWidth - iconSize) / 2
+            val iconTop = (buttonHeight - iconSize) / 2
+
+            val xIcon = ContextCompat.getDrawable(this, R.drawable.x_icon)?.apply {
+                setBounds(0, iconTop, iconLeft + iconSize, iconTop + iconSize)
+            }
+
+            val yIcon = ContextCompat.getDrawable(this, R.drawable.o_icon)?.apply {
+                setBounds(0, iconTop, iconLeft + iconSize, iconTop + iconSize)
+            }
+
+            val emptyIcon = ContextCompat.getDrawable(this, R.drawable.empty_icon)
+
+            if (gameState.board[row][col] == Player.NONE) {
+                gameState.board[row][col] = gameState.currentPlayer
+
+                when (gameState.currentPlayer) {
+                    Player.X -> button.setCompoundDrawables(null, xIcon, null, null)
+                    Player.O -> button.setCompoundDrawables(null, yIcon, null, null)
+                    else -> button.setCompoundDrawables(null, emptyIcon, null, null)
+                }
+
+                if (checkGameOver()) return
+
+                gameState.currentPlayer = if (gameState.currentPlayer == Player.X) Player.O else Player.X
+
+                if (gameState.currentPlayer == Player.O) {
+                    lifecycleScope.launch {
+                        val move = TicTacToeGame.findBestMove(gameState.board, gameState.board.size)
+                        val (aiRow, aiCol) = move
+
+                        gameState.board[aiRow][aiCol] = Player.O
+
+                        val aiButtonIndex = aiRow * gameState.board.size + aiCol
+                        val aiButton = gridLayout.getChildAt(aiButtonIndex) as Button
+                        aiButton.setCompoundDrawables(null, yIcon, null, null)
+
+                        if (checkGameOver()) return@launch
+
+                        gameState.currentPlayer = Player.X
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleRematch() {
+        val selectedPosition = sizeSpinner.selectedItemPosition
+        val newSize = when (selectedPosition) {
+            0 -> 3
+            1 -> 4
+            2 -> 5
+            3 -> 6
+            else -> 3
+        }
+
+        Log.d("MainActivity", "Rematch selected size: $newSize")
+
+        updateBoardSize(newSize) // Update the board size in the UI
+    }
+
+
+    private fun checkGameOver(): Boolean {
+        val winner = TicTacToeGame.checkWinner(gameState.board)
+        if (winner != null) {
+            gameState.winner = winner
+            lifecycleScope.launch {
+                displayResult(winner)
+                disableBoard()
+            }
+            Log.d("MainActivity", "Game over, winner: $winner")
+            return true
+        }
+
+        if (TicTacToeGame.isBoardFull(gameState.board)) {
+            gameState.winner = Player.NONE
+            lifecycleScope.launch {
+                displayResult(gameState.winner)
+                disableBoard()
+            }
+            Log.d("MainActivity", "Game over, it's a draw")
+            return true
+        }
+
+        return false
+    }
+
+    private fun disableBoard() {
+        for (i in 0 until gridLayout.childCount) {
+            val button = gridLayout.getChildAt(i) as Button
+            button.isEnabled = false
+        }
+    }
+
+    private fun displayResult(winner: Player?) {
+        gameResult.text = when (winner) {
+            Player.X -> "Player X Wins!"
+            Player.O -> "Player O Wins!"
+            Player.NONE -> "It's a Draw!"
+            else -> "Game Over"
+        }
+        Log.d("MainActivity", "Result displayed: ${gameResult.text}")
+    }
+}
+
+
+from flask import Flask, request, jsonify
+import mysql.connector
+from mysql.connector import Error
+
+app = Flask(__name__)
+
+def create_connection():
+    try:
+        connection = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='',
+            database='tic_tac_toe'
+        )
+        if connection.is_connected():
+            print("Database connected")  # Add this line for debugging
+            return connection
+    except Error as e:
+        print(f"Error: {e}")
+        return None
+
+def close_connection(connection):
+    """Close the MySQL database connection."""
+    if connection.is_connected():
+        connection.close()
+
+@app.route('/insert_game', methods=['POST'])
+def insert_game():
+    data = request.json
+    try:
+        connection = create_connection()
+        if not connection:
+            return jsonify({'error': 'Failed to connect to the database'}), 500
+
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO games (size) VALUES (%s)",
+            (data['size'],)
+        )
+        connection.commit()
+        game_id = cursor.lastrowid  # Get the last inserted ID
+        close_connection(connection)
+        return jsonify({"id": game_id}), 201
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/insert_move', methods=['POST'])
+def insert_move():
+    """Insert a move into the database."""
+    data = request.json
+    game_id = data.get('game_id')
+    player = data.get('player')
+    row = data.get('row')
+    col = data.get('col')
+
+    if not all([game_id, player, row is not None, col is not None]):
+        return jsonify({'error': 'Missing data'}), 400
+
+    try:
+        connection = create_connection()
+        if not connection:
+            return jsonify({'error': 'Failed to connect to the database'}), 500
+
+        cursor = connection.cursor()
+        query = "INSERT INTO moves (game_id, player, row, col) VALUES (%s, %s, %s, %s)"
+        values = (game_id, player, row, col)
+        cursor.execute(query, values)
+        connection.commit()
+
+        # Check if the game should be marked as completed
+        if should_end_game(connection, game_id):
+            update_game_status(connection, game_id)
+
+        close_connection(connection)
+        return jsonify({'message': 'Move inserted'}), 201
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_moves/<int:game_id>', methods=['GET'])
+def get_moves(game_id):
+    """Retrieve all moves for a given game."""
+    try:
+        connection = create_connection()
+        if not connection:
+            return jsonify({'error': 'Failed to connect to the database'}), 500
+
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT * FROM moves WHERE game_id = %s"
+        cursor.execute(query, (game_id,))
+        moves = cursor.fetchall()
+        close_connection(connection)
+        return jsonify(moves), 200
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_games', methods=['GET'])
+def get_games():
+    """Retrieve all games."""
+    try:
+        connection = create_connection()
+        if not connection:
+            return jsonify({'error': 'Failed to connect to the database'}), 500
+
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT * FROM games"
+        cursor.execute(query)
+        games = cursor.fetchall()
+        close_connection(connection)
+        return jsonify(games), 200
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/update_game', methods=['POST'])
+def update_game():
+    data = request.json
+    game_id = data.get('game_id')
+    status = data.get('status')
+    winner = data.get('winner')
+
+    if not all([game_id, status]):
+        return jsonify({'error': 'Missing data'}), 400
+
+    if status not in ['ONGOING', 'COMPLETED']:
+        return jsonify({'error': 'Invalid status'}), 400
+
+    if status == 'COMPLETED' and winner not in ['X', 'O', 'DRAW']:
+        return jsonify({'error': 'Invalid winner'}), 400
+
+    try:
+        connection = create_connection()
+        if not connection:
+            return jsonify({'error': 'Failed to connect to the database'}), 500
+
+        cursor = connection.cursor()
+        query = """
+            UPDATE games
+            SET status = %s, winner = %s
+            WHERE id = %s
+        """
+        values = (status, winner, game_id)
+        cursor.execute(query, values)
+        connection.commit()
+        close_connection(connection)
+        return jsonify({'message': 'Game updated'}), 200
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def should_end_game(connection, game_id):
+    """Check if the game should be marked as completed (dummy implementation)."""
+    # Implement your logic to check if the game has ended (win/draw/full board)
+    return False
+
+def update_game_status(connection, game_id):
+    """Update the game status based on game logic (dummy implementation)."""
+    # Implement your logic to determine the winner and update the game status
+    # Example: update_game_status(connection, game_id, 'COMPLETED', 'X')
+    pass
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)

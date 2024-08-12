@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Android",
+            "type": "android",
+            "request": "launch",
+            "mainClass": "MainActivity",
+            "manifest": "${workspaceFolder}/app/src/main/AndroidManifest.xml"
+        }
+    ]
+}

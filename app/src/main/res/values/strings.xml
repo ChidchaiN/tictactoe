@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">tictactoe</string>
+    <string-array name="table_size">
+        <item>3x3</item>
+        <item>4x4</item>
+        <item>3x5</item>
+        <item>3x6</item>
+    </string-array>
+    <array name="size_options">
+        <item>3x3</item>
+        <item>4x4</item>
+        <item>5x5</item>
+        <item>6x6</item>
+    </array>
+    <string name="x_wins">Player X wins!</string>
+    <string name="o_wins">Player O wins!</string>
+    <string name="draw">Its a draw!</string>
+    <string name="game_in_progress">Game in progress...</string>
+</resources>

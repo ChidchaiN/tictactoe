@@ -1,0 +1,19 @@
+CREATE DATABASE tic_tac_toe;
+USE tic_tac_toe;
+
+CREATE TABLE games (
+    game_id INT AUTO_INCREMENT PRIMARY KEY,
+    start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    end_time TIMESTAMP NULL,
+    status ENUM('ONGOING', 'COMPLETED') DEFAULT 'ONGOING'
+);
+
+CREATE TABLE moves (
+    move_id INT AUTO_INCREMENT PRIMARY KEY,
+    game_id INT,
+    player ENUM('X', 'O'),
+    row INT,
+    col INT,
+    move_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (game_id) REFERENCES games(game_id) ON DELETE CASCADE
+);
