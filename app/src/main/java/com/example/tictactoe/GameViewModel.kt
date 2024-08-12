@@ -4,10 +4,6 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import retrofit2.Retrofit
 
 
 class GameViewModel : ViewModel() {
@@ -29,8 +25,16 @@ class GameViewModel : ViewModel() {
         repository.insertMove(move, onResult)
     }
 
-    fun getGames(callback: (Result<List<GameDetail>>) -> Unit) {
-        repository.getGames(callback)
+    fun getCompletedGames(callback: (Result<List<GameDetail>>) -> Unit) {
+        repository.getGames { result ->
+            result.onSuccess { games ->
+                // Filter out games that don't have a winner
+                val completedGames = games.filter { it.winner != null }
+                callback(Result.success(completedGames))
+            }.onFailure { exception ->
+                callback(Result.failure(exception))
+            }
+        }
     }
 
     fun updateGameWinner(gameId: Int, winner: String?, callback: (Result<Unit>) -> Unit) {
@@ -47,6 +51,5 @@ class GameViewModel : ViewModel() {
             }
         }
     }
-
-
 }
+

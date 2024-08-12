@@ -17,6 +17,7 @@ class ReplayActivity : AppCompatActivity() {
     private lateinit var gameViewModel: GameViewModel
     private var gameId: Int? = null
     private var gameSize: Int = 3
+    private lateinit var newGame: Button
 
     @OptIn(DelicateCoroutinesApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,6 +26,7 @@ class ReplayActivity : AppCompatActivity() {
 
         gridLayout = findViewById(R.id.grid_layout)
         gameViewModel = ViewModelProvider(this)[GameViewModel::class.java]
+        newGame = findViewById(R.id.newGame_button)
 
         gameId = intent.getIntExtra("GAME_ID", -1)  // Retrieve game ID
         gameSize = intent.getIntExtra("GAME_SIZE", 3)
@@ -37,6 +39,12 @@ class ReplayActivity : AppCompatActivity() {
         } else {
             // Handle case where game ID is invalid or not passed
             Log.e("ReplayActivity", "Invalid game ID received")
+        }
+
+        newGame.setOnClickListener {
+            val intent = Intent(this@ReplayActivity, MainActivity::class.java)
+            intent.putExtra("GAME_SIZE", gameSize)
+            startActivity(intent)
         }
     }
 

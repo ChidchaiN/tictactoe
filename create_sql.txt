@@ -3,6 +3,8 @@ USE tic_tac_toe;
 
 CREATE TABLE games (
     game_id INT AUTO_INCREMENT PRIMARY KEY,
+    size INT,
+    winner ENUM('X', 'O', 'DRAW') DEFAULT 'NONE',
     start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     end_time TIMESTAMP NULL,
     status ENUM('ONGOING', 'COMPLETED') DEFAULT 'ONGOING'

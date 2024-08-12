@@ -37,8 +37,15 @@ class MainActivity : AppCompatActivity() {
         // Initialize the ViewModel
         gameViewModel = ViewModelProvider(this)[GameViewModel::class.java]
 
+        val size = intent.getIntExtra("GAME_SIZE", -1)
+        if (size != -1) {
+            updateBoardSize(size)
+            startNewGame(size)
+        }
+
         setupTableSizeSpinner()
         setupBoard()
+        startNewGame(size)
 
         rematchButton.setOnClickListener {
             handleRematch()
@@ -73,6 +80,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 Log.d("MainActivity", "Table size: $size")
                 updateBoardSize(size)
+                startNewGame(size)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {
@@ -228,7 +236,7 @@ class MainActivity : AppCompatActivity() {
                 Player.X -> "Player X wins!"
                 Player.O -> "Player O wins!"
                 Player.DRAW -> "It's a draw!"
-                else -> "No winner" // This should handle any unexpected value
+                else -> "It's a draw!" // This should handle any unexpected value
             }
 
             gameResult.text = winnerText

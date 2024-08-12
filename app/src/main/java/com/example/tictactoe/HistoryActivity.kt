@@ -23,12 +23,13 @@ class HistoryActivity : AppCompatActivity() {
         gameViewModel = ViewModelProvider(this)[GameViewModel::class.java]
 
         // Fetch game history and display it
-        gameViewModel.getGames { result ->
+        gameViewModel.getCompletedGames { result ->
             if (result.isSuccess) {
                 val games = result.getOrNull() ?: emptyList()
                 displayGameHistory(games)
             } else {
                 // Handle error
+                Log.e("HistoryActivity", "Failed to fetch completed games", result.exceptionOrNull())
             }
         }
     }
