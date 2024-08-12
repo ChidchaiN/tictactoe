@@ -25,6 +25,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".HistoryActivity" />
+        <activity android:name=".ReplayActivity" />
     </application>
 
 </manifest>

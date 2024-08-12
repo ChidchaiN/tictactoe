@@ -96,19 +96,28 @@ def get_games():
     try:
         connection = create_connection()
         if not connection:
+            app.logger.error('Failed to connect to the database')
             return jsonify({'error': 'Failed to connect to the database'}), 500
 
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM games")
+        cursor.execute("SELECT game_id, size, winner, start_time, end_time, status FROM games")
         games = cursor.fetchall()
+
+        # Log the games retrieved
+        app.logger.debug(f'Games retrieved: {games}')
+
         close_connection(connection)
         return jsonify(games), 200
     except Error as e:
+        app.logger.error(f'Error occurred: {str(e)}')
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/update_game', methods=['POST'])
 def update_game():
     data = request.json
+    app.logger.debug(f"Received data: {data}")  # Log the received data
+
     game_id = data.get('game_id')
     status = data.get('status')
     winner = data.get('winner')
@@ -129,14 +138,15 @@ def update_game():
 
         cursor = connection.cursor()
         cursor.execute(
-            "UPDATE games SET status = %s, winner = %s WHERE id = %s",
+            "UPDATE games SET status = %s, winner = %s WHERE game_id = %s",
             (status, winner, game_id)
         )
         connection.commit()
         close_connection(connection)
         return jsonify({'message': 'Game updated'}), 200
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Database error: {e}")  # Use app.logger for better logging
+        return jsonify({'error': 'Internal server error'}), 500
 
 def should_end_game(connection, game_id):
     """Check if the game should be marked as completed (dummy implementation)."""
@@ -150,3 +160,4 @@ def update_game_status(connection, game_id):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+    app.debug = True

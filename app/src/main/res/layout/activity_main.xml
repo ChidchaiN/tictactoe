@@ -20,8 +20,6 @@
         android:layout_height="wrap_content"
         android:entries="@array/size_options" />
 
-    <!-- Removed the history_spinner -->
-
     <Button
         android:id="@+id/history_button"
         android:layout_width="wrap_content"

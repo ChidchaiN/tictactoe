@@ -33,13 +33,14 @@ data class MoveResponse(
 )
 
 data class GameDetail(
-    val id: Int,
+    val game_id: Int,
     val size: Int,
-    val board: Array<Array<Player>>,
-    val currentPlayer: Player,
-    val winner: Player? = null,
-    val title: String
+    val winner: String,  // 'X', 'O', or 'DRAW'
+    val start_time: String,  // You might want to parse this timestamp
+    val end_time: String?,  // Nullable if the game hasn't ended
+    val status: String  // 'ONGOING' or 'COMPLETED'
 )
+
 
 data class MoveDetail(
     val game_id: Int,
@@ -54,7 +55,6 @@ data class GameUpdate(
     val winner: String?
 )
 
-
 interface ApiService {
     @POST("insert_game")
     fun insertGame(@Body game: Game): Call<GameResponse>
@@ -67,9 +67,6 @@ interface ApiService {
 
     @GET("get_games")
     fun getGames(): Call<List<GameDetail>>
-
-    @GET("get_game_details/{gameId}")
-    fun getGameDetails(@Path("gameId") gameId: Int): Call<GameDetail>
 
     @POST("update_game")
     fun updateGame(@Body update: GameUpdate): Call<Void>

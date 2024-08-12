@@ -49,8 +49,9 @@ class MainActivity : AppCompatActivity() {
             // Update UI with moves if needed
         }
 
+        // Set up the view history button to start HistoryActivity
         viewHistoryButton.setOnClickListener {
-            val intent = Intent(this, HistoryActivity::class.java)
+            val intent = Intent(this@MainActivity, HistoryActivity::class.java)
             startActivity(intent)
         }
     }
@@ -119,21 +120,41 @@ class MainActivity : AppCompatActivity() {
             val button = gridLayout.getChildAt(buttonIndex) as Button
 
             val xIcon = ContextCompat.getDrawable(this, R.drawable.x_icon)
-            val yIcon = ContextCompat.getDrawable(this, R.drawable.o_icon)
+            val oIcon = ContextCompat.getDrawable(this, R.drawable.o_icon)
             val emptyIcon = ContextCompat.getDrawable(this, R.drawable.empty_icon)
 
+            // Record the player's move
             gameState.board[row][col] = gameState.currentPlayer
             val icon = when (gameState.currentPlayer) {
                 Player.X -> xIcon
-                Player.O -> yIcon
+                Player.O -> oIcon
                 else -> emptyIcon
             }
             button.setCompoundDrawablesWithIntrinsicBounds(null, icon, null, null)
 
+            // Record the move in the database
+            currentGameId?.let { gameId ->
+                gameViewModel.insertMove(
+                    gameId,
+                    gameState.currentPlayer.name,
+                    row,
+                    col
+                ) { result ->
+                    if (result.isSuccess) {
+                        Log.d("MainActivity", "Player move recorded in the database successfully")
+                    } else {
+                        Log.e("MainActivity", "Failed to record player move in the database", result.exceptionOrNull())
+                    }
+                }
+            }
+
+            // Check if the game is over after the player's move
             if (checkGameOver()) return
 
+            // Switch player
             gameState.currentPlayer = if (gameState.currentPlayer == Player.X) Player.O else Player.X
 
+            // Handle AI move if it's AI's turn
             if (gameState.currentPlayer == Player.O) {
                 lifecycleScope.launch {
                     val move = TicTacToeGame.findBestMove(gameState.board, gameState.board.size)
@@ -144,26 +165,28 @@ class MainActivity : AppCompatActivity() {
 
                         val aiButtonIndex = aiRow * gameState.board.size + aiCol
                         val aiButton = gridLayout.getChildAt(aiButtonIndex) as Button
-                        aiButton.setCompoundDrawablesWithIntrinsicBounds(null, yIcon, null, null)
+                        aiButton.setCompoundDrawablesWithIntrinsicBounds(null, oIcon, null, null)
+
+                        // Record the AI move in the database
+                        currentGameId?.let { gameId ->
+                            gameViewModel.insertMove(
+                                gameId,
+                                Player.O.name,
+                                aiRow,
+                                aiCol
+                            ) { result ->
+                                if (result.isSuccess) {
+                                    Log.d("MainActivity", "AI move recorded in the database successfully")
+                                } else {
+                                    Log.e("MainActivity", "Failed to record AI move in the database", result.exceptionOrNull())
+                                }
+                            }
+                        }
 
                         if (checkGameOver()) return@launch
 
+                        // Switch player back to X
                         gameState.currentPlayer = Player.X
-                    }
-                }
-            }
-
-            currentGameId?.let { gameId ->
-                gameViewModel.insertMove(
-                    gameId,
-                    gameState.currentPlayer.name,
-                    row,
-                    col
-                ) { result ->
-                    if (result.isSuccess) {
-                        Log.d("MainActivity", "Move recorded in the database successfully")
-                    } else {
-                        Log.e("MainActivity", "Failed to record move in the database", result.exceptionOrNull())
                     }
                 }
             }
@@ -197,17 +220,29 @@ class MainActivity : AppCompatActivity() {
     private fun checkGameOver(): Boolean {
         val winner = TicTacToeGame.checkWinner(gameState.board)
         if (winner != null || TicTacToeGame.isBoardFull(gameState.board)) {
+            // Set the winner in the game state
             gameState.winner = winner
+
+            // Determine the text to display based on the winner
             val winnerText = when (winner) {
                 Player.X -> "Player X wins!"
                 Player.O -> "Player O wins!"
-                Player.NONE -> "No winner" // or handle this case appropriately
-                null -> "It's a draw!"
+                Player.DRAW -> "It's a draw!"
+                else -> "No winner" // This should handle any unexpected value
             }
+
             gameResult.text = winnerText
 
+            // Determine the status to update
+            val status = when (winner) {
+                Player.X -> "X"
+                Player.O -> "O"
+                else -> "DRAW"
+            }
+
+            // Update the game winner on the server
             currentGameId?.let { gameId ->
-                gameViewModel.updateGameWinner(gameId, winner?.name ?: "NONE") { result ->
+                gameViewModel.updateGameWinner(gameId, status) { result ->
                     if (result.isSuccess) {
                         Log.d("MainActivity", "Game winner updated successfully")
                     } else {
@@ -220,5 +255,4 @@ class MainActivity : AppCompatActivity() {
         }
         return false
     }
-
 }

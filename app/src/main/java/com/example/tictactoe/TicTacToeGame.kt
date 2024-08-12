@@ -3,7 +3,7 @@ package com.example.tictactoe
 
 // Player enum class
 enum class Player {
-    X, O, NONE
+    X, O, DRAW, NONE
 }
 
 data class GameState(

@@ -1,6 +1,8 @@
 package com.example.tictactoe
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
@@ -34,12 +36,17 @@ class HistoryActivity : AppCompatActivity() {
     private fun displayGameHistory(games: List<GameDetail>) {
         for (game in games) {
             val button = Button(this).apply {
-                text = "Size: ${game.size}, Winner: ${game.winner}"
+                text = "ID: ${game.game_id}, Size: ${game.size}, Winner: ${game.winner ?: "None"}"
                 setOnClickListener {
-                    // Handle button click if needed, e.g., show game details or replay
+                    val intent = Intent(this@HistoryActivity, ReplayActivity::class.java).apply {
+                        putExtra("GAME_ID", game.game_id)  // Ensure game.id is correct here
+                        putExtra("GAME_SIZE", game.size)
+                    }
+                    startActivity(intent)
                 }
             }
             historyLayout.addView(button)
         }
     }
+
 }
